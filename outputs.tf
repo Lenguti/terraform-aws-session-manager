@@ -1,9 +1,9 @@
 output "session_logs_bucket_name" {
-  value = aws_s3_bucket.session_logs_bucket.id
+  value = var.enable_log_to_s3 == true ? aws_s3_bucket.session_logs_bucket[0].id : null
 }
 
 output "access_log_bucket_name" {
-  value = aws_s3_bucket.access_log_bucket.id
+  value = var.enable_log_to_s3 == true ? aws_s3_bucket.access_log_bucket[0].id : null
 }
 
 output "cloudwatch_log_group_arn" {

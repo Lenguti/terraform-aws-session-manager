@@ -66,7 +66,9 @@ data "aws_iam_policy" "AmazonSSMManagedInstanceCore" {
   arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-data "aws_iam_policy_document" "ssm_s3_cwl_access" {
+data "aws_iam_policy_document" "ssm_s3_access" {
+  count = var.enable_log_to_s3 == true ? 1 : 0
+
   # checkov:skip=CKV_AWS_111: ADD REASON
   # A custom policy for S3 bucket access
   # https://docs.aws.amazon.com/en_us/systems-manager/latest/userguide/setup-instance-profile.html#instance-profile-custom-s3-policy
@@ -80,8 +82,8 @@ data "aws_iam_policy_document" "ssm_s3_cwl_access" {
     ]
 
     resources = [
-      aws_s3_bucket.session_logs_bucket.arn,
-      "${aws_s3_bucket.session_logs_bucket.arn}/*",
+      aws_s3_bucket.session_logs_bucket[count.index].arn,
+      "${aws_s3_bucket.session_logs_bucket[count.index].arn}/*",
     ]
   }
 
@@ -93,12 +95,13 @@ data "aws_iam_policy_document" "ssm_s3_cwl_access" {
     ]
 
     resources = [
-      aws_s3_bucket.session_logs_bucket.arn
+      aws_s3_bucket.session_logs_bucket[count.index].arn
     ]
   }
+}
 
-
-  # A custom policy for CloudWatch Logs access
+data "aws_iam_policy_document" "ssm_cwl_access" {
+   # A custom policy for CloudWatch Logs access
   # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/permissions-reference-cwl.html
   statement {
     sid = "CloudWatchLogsAccessForSessionManager"
@@ -127,10 +130,18 @@ data "aws_iam_policy_document" "ssm_s3_cwl_access" {
   }
 }
 
-resource "aws_iam_policy" "ssm_s3_cwl_access" {
-  name   = "ssm_s3_cwl_access-${local.region}"
+resource "aws_iam_policy" "ssm_s3_access" {
+  count = var.enable_log_to_s3 == true ? 1 : 0
+
+  name   = "ssm_s3_access-${local.region}"
   path   = "/"
-  policy = data.aws_iam_policy_document.ssm_s3_cwl_access.json
+  policy = data.aws_iam_policy_document.ssm_s3_access[count.index].json
+}
+
+resource "aws_iam_policy" "ssm_cwl_access" {
+  name   = "ssm_cwl_access-${local.region}"
+  path   = "/"
+  policy = data.aws_iam_policy_document.ssm_cwl_access.json
 }
 
 resource "aws_iam_role_policy_attachment" "SSM-role-policy-attach" {
@@ -138,9 +149,16 @@ resource "aws_iam_role_policy_attachment" "SSM-role-policy-attach" {
   policy_arn = data.aws_iam_policy.AmazonSSMManagedInstanceCore.arn
 }
 
-resource "aws_iam_role_policy_attachment" "SSM-s3-cwl-policy-attach" {
+resource "aws_iam_role_policy_attachment" "SSM-s3-policy-attach" {
+  count = var.enable_log_to_s3 == true ? 1 : 0
+
   role       = aws_iam_role.ssm_role.name
-  policy_arn = aws_iam_policy.ssm_s3_cwl_access.arn
+  policy_arn = aws_iam_policy.ssm_s3_access[count.index].arn
+}
+
+resource "aws_iam_role_policy_attachment" "SSM-cwl-policy-attach" {
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = aws_iam_policy.ssm_cwl_access.arn
 }
 
 resource "aws_iam_instance_profile" "ssm_profile" {
