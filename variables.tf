@@ -1,6 +1,7 @@
 variable "bucket_name" {
   description = "Name prefix of S3 bucket to store session logs"
   type        = string
+  default     = ""
 }
 
 variable "log_archive_days" {
@@ -18,6 +19,7 @@ variable "log_expire_days" {
 variable "access_log_bucket_name" {
   description = "Name prefix of S3 bucket to store access logs from session logs bucket"
   type        = string
+  default     = ""
 }
 
 variable "access_log_expire_days" {
